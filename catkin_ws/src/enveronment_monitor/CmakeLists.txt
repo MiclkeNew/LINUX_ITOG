@@ -1,0 +1,34 @@
+cmake_minimum_required(VERSION 3.0.2)
+project(environment_monitor)
+
+# Поиск зависимостей ROS (catkin)
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  rospy
+  std_msgs
+  sensor_msgs
+  velodyne_driver
+  realsense2_camera
+  xsens_driver
+)
+
+# Указываем, что это пакет catkin
+catkin_package(
+  CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs
+)
+
+# Установка Python-скриптов
+catkin_install_python(PROGRAMS
+  scripts/data_processor.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+# Установка launch-файлов
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
+
+# Установка конфигурационных файлов
+install(DIRECTORY config/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
+)

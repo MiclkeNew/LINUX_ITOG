@@ -1,0 +1,78 @@
+<launch>
+    <!-- 
+    Основной launch-файл для запуска всех датчиков робота-исследователя
+    Поддерживает параметры для включения визуализации в rviz/rqt
+    -->
+
+    <!-- Параметры визуализации -->
+    <arg name="rviz" default="false" doc="Запустить RViz для визуализации данных"/>
+    <arg name="rqt" default="false" doc="Запустить RQt для анализа данных"/>
+    <arg name="gui" default="false" doc="Запустить графический интерфейс для узлов"/>
+
+    <!-- Параметры конфигурации -->
+    <arg name="lidar_enabled" default="true" doc="Включить LIDAR sensor"/>
+    <arg name="camera_enabled" default="true" doc="Включить камеру"/>
+    <arg name="imu_enabled" default="true" doc="Включить IMU sensor"/>
+
+    <!-- Глобальные параметры -->
+    <param name="robot_description" textfile="$(find environment_monitor)/config/robot.urdf" />
+
+    <!-- 1. Узел LIDAR (Velodyne) -->
+    <group if="$(arg lidar_enabled)">
+        <node pkg="velodyne_driver" type="velodyne_node" name="velodyne_node" output="screen">
+            <param name="model" value="VLP16" />
+            <param name="frame_id" value="velodyne" />
+            <param name="port" value="2368" />
+            <param name="rpm" value="600" />
+            <remap from="velodyne_packets" to="lidar/packets" />
+        </node>
+        
+        <node pkg="velodyne_pointcloud" type="cloud_node" name="cloud_node">
+            <param name="model" value="VLP16" />
+            <param name="calibration" value="$(find velodyne_pointcloud)/params/VLP16db.yaml"/>
+        </node>
+    </group>
+
+    <!-- 2. Узел камеры (RealSense) -->
+    <group if="$(arg camera_enabled)">
+        <node pkg="realsense2_camera" type="realsense2_camera_node" name="realsense_camera" output="screen">
+            <param name="align_depth" value="true" />
+            <param name="enable_infra1" value="false" />
+            <param name="enable_infra2" value="false" />
+            <param name="color_fps" value="30" />
+            <param name="depth_fps" value="30" />
+            <remap from="camera/color/image_raw" to="camera/rgb/image_raw" />
+        </node>
+    </group>
+
+    <!-- 3. Узел IMU (XSens) -->
+    <group if="$(arg imu_enabled)">
+        <node pkg="xsens_driver" type="mtnode.py" name="xsens_node" output="screen">
+            <param name="frame_id" value="imu_link" />
+            <param name="device" value="/dev/ttyUSB0" />
+            <param name="baudrate" value="115200" />
+            <remap from="imu/data" to="imu/data_raw" />
+        </node>
+    </group>
+
+    <!-- 4. Визуализация в RViz -->
+    <group if="$(arg rviz)">
+        <node pkg="rviz" type="rviz" name="rviz" 
+              args="-d $(find environment_monitor)/config/sensors.rviz" 
+              output="screen"/>
+    </group>
+
+    <!-- 5. Визуализация в RQt -->
+    <group if="$(arg rqt)">
+        <node pkg="rqt_gui" type="rqt_gui" name="rqt" 
+              args="--perspective-file $(find environment_monitor)/config/sensors.perspective"/>
+    </group>
+
+    <!-- 6. Статическое преобразование координат -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_lidar"
+          args="0.2 0 0.5 0 0 0 base_link velodyne" />
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_camera"
+          args="0.1 0 0.3 0 0 0 base_link camera_link" />
+    <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_imu"
+          args="0 0 0.1 0 0 0 base_link imu_link" />
+</launch>
